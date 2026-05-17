@@ -33,12 +33,12 @@ function FeedItem({ item }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2 mb-0.5">
               <p className="text-sm font-semibold text-gray-900 truncate">
-                {item.stage_name || 'Update'}
+                {item.stages?.name || 'Update'}
               </p>
               <span className="text-xs text-gray-400 shrink-0">{timeAgo(item.created_at)}</span>
             </div>
             <p className="text-xs text-gray-400">
-              {item.user_name || item.user_email || 'Team member'}
+              {item.profiles?.full_name || item.profiles?.email || 'Team member'}
             </p>
             {item.caption && (
               <p className="text-sm text-gray-600 mt-2">{item.caption}</p>
@@ -122,6 +122,3 @@ export default function ProgressFeed({ project, role, user }) {
       {feed.map(item => (
         <FeedItem key={item.id} item={item} />
       ))}
-    </div>
-  )
-}

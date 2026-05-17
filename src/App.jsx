@@ -1,18 +1,19 @@
 // ============================================================
-// Building Track -- Root App + Routing
+// Building Track -- Root App + Auth Routing
 // ============================================================
 import { useState, useEffect } from 'react'
 import { supabase, isConfigured } from './lib/supabase.js'
-import Auth     from './components/Auth.jsx'
-import Dashboard from './components/Dashboard.jsx'
+import Auth        from './components/Auth.jsx'
+import Dashboard   from './components/Dashboard.jsx'
 import JoinProject from './components/JoinProject.jsx'
 
 export default function App() {
-  const [user,    setUser]    = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  // Check for invite code in URL before rendering
-  const inviteCode = new URLSearchParams(window.location.search).get('join')
+  const [user,       setUser]       = useState(null)
+  const [loading,    setLoading]    = useState(true)
+  // FIX BUG 15: store invite code in state so it can be cleared after join
+  const [inviteCode, setInviteCode] = useState(
+    () => new URLSearchParams(window.location.search).get('join')
+  )
 
   useEffect(() => {
     if (!isConfigured) { setLoading(false); return }
@@ -28,6 +29,12 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Clear invite code from URL without a page reload
+  const clearInvite = () => {
+    window.history.replaceState({}, '', '/')
+    setInviteCode(null)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -41,17 +48,9 @@ export default function App() {
     )
   }
 
-  // Invite join flow -- show join screen even if not logged in
+  // Not logged in + invite code → show auth with invite context
   if (inviteCode && !user) {
     return <Auth inviteCode={inviteCode} onAuth={setUser} />
   }
-  if (inviteCode && user) {
-    return <JoinProject code={inviteCode} user={user} onJoined={() => {
-      window.history.replaceState({}, '', '/')
-    }} />
-  }
 
-  if (!user) return <Auth onAuth={setUser} />
-
-  return <Dashboard user={user} onLogout={() => setUser(null)} />
-}
+  // Logged in + invite code
