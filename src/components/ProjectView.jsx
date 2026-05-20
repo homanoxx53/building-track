@@ -42,8 +42,9 @@ export default function ProjectView({ project: initial, role, user, onBack }) {
   }
 
   const handleCopy = () => {
+    const base = window.location.origin
     const text = invite
-      ? `Join my Building Track project "${project.title}":\nhttps://building-track.com/?join=${invite}`
+      ? `Join my Building Track project "${project.title}":\n${base}/?join=${invite}`
       : ''
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
