@@ -3,7 +3,7 @@
 // ============================================================
 import { useState, useEffect } from 'react'
 import { Package, Plus, X, Loader, TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { getMaterialLogs, addMaterialLog } from '../lib/supabase.js'
+import { getMaterialLogs, addMaterialLog, safeErrorMessage } from '../lib/supabase.js'
 
 const UNITS = ['bags', 'tonnes', 'kg', 'm³', 'm²', 'metres', 'litres', 'pieces', 'sheets', 'rolls', 'other']
 
@@ -29,18 +29,30 @@ function AddMaterialSheet({ projectId, onAdded, onCancel }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const handleSave = async () => {
-    if (!form.item_name.trim()) { setError('Item name required'); return }
+    const name = form.item_name.trim().slice(0, 100)
+    if (!name) { setError('Item name required'); return }
+
+    const boqVal    = form.boq_quantity    !== '' ? parseFloat(form.boq_quantity)    : null
+    const actualVal = form.actual_quantity !== '' ? parseFloat(form.actual_quantity) : 0
+
+    if (boqVal !== null && (!isFinite(boqVal) || boqVal < 0)) {
+      setError('BOQ quantity must be a positive number'); return
+    }
+    if (!isFinite(actualVal) || actualVal < 0) {
+      setError('Actual quantity must be a positive number'); return
+    }
+
     setLoading(true)
     setError(null)
     const { error: err } = await addMaterialLog({
       project_id:       projectId,
-      item_name:        form.item_name.trim(),
+      item_name:        name,
       unit:             form.unit,
-      boq_quantity:     form.boq_quantity ? parseFloat(form.boq_quantity) : null,
-      actual_quantity:  form.actual_quantity ? parseFloat(form.actual_quantity) : 0,
-      notes:            form.notes.trim() || null,
+      boq_quantity:     boqVal,
+      actual_quantity:  actualVal,
+      notes:            form.notes.trim().slice(0, 500) || null,
     })
-    if (err) { setError(err.message || 'Failed to save'); setLoading(false); return }
+    if (err) { setError(safeErrorMessage(err, 'Failed to save. Please try again.')); setLoading(false); return }
     onAdded()
   }
 
@@ -59,6 +71,7 @@ function AddMaterialSheet({ projectId, onAdded, onCancel }) {
               value={form.item_name}
               onChange={e => set('item_name', e.target.value)}
               placeholder="e.g. Dangote Cement"
+              maxLength={100}
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400"
             />
           </div>
@@ -106,6 +119,7 @@ function AddMaterialSheet({ projectId, onAdded, onCancel }) {
               onChange={e => set('notes', e.target.value)}
               placeholder="Supplier, batch, remarks…"
               rows={2}
+              maxLength={500}
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 resize-none"
             />
           </div>

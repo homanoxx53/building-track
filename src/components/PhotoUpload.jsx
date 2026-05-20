@@ -127,7 +127,7 @@ export default function PhotoUpload({ stageId, projectId, onDone, onCancel }) {
       const uploadedUrls = []
       for (const { file } of files) {
         const { publicUrl, error: upErr } = await uploadPhoto(file, projectId, stageId)
-        if (upErr) throw new Error(upErr.message || 'Upload failed')
+        if (upErr) throw new Error('Upload failed. Please try again.')
         uploadedUrls.push(publicUrl)
       }
 
@@ -201,9 +201,10 @@ export default function PhotoUpload({ stageId, projectId, onDone, onCancel }) {
 
         <textarea
           value={caption}
-          onChange={e => setCaption(e.target.value)}
+          onChange={e => setCaption(e.target.value.slice(0, 500))}
           placeholder="Add a note about this progress update... (optional)"
           rows={2}
+          maxLength={500}
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 resize-none mb-4"
         />
 

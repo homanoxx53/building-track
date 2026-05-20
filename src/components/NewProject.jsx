@@ -3,7 +3,7 @@
 // ============================================================
 import { useState } from 'react'
 import { ArrowLeft, Building2, MapPin, Loader } from 'lucide-react'
-import { createProject } from '../lib/supabase.js'
+import { createProject, safeErrorMessage } from '../lib/supabase.js'
 
 const DEFAULT_STAGES = [
   'Foundation',
@@ -26,6 +26,7 @@ export default function NewProject({ user, onCreated, onCancel }) {
 
   const handleNext = () => {
     if (!form.title.trim()) { setError('Project name is required'); return }
+    if (form.title.trim().length > 100) { setError('Project name must be 100 characters or less'); return }
     setError(null)
     setStep(2)
   }
@@ -46,7 +47,7 @@ export default function NewProject({ user, onCreated, onCancel }) {
       stages:      selectedStages,
       owner_id:    user.id,
     })
-    if (result.error) { setError(result.error.message || 'Failed to create project'); setLoading(false); return }
+    if (result.error) { setError(safeErrorMessage(result.error, 'Failed to create project. Please try again.')); setLoading(false); return }
     setLoading(false)
     onCreated(result.data)
   }
@@ -86,6 +87,7 @@ export default function NewProject({ user, onCreated, onCancel }) {
                     value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                     placeholder="e.g. Accra Family House"
+                    maxLength={100}
                     className="w-full pl-9 pr-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 bg-white"
                   />
                 </div>
@@ -100,6 +102,7 @@ export default function NewProject({ user, onCreated, onCancel }) {
                     onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
                     placeholder="Full address or plot description"
                     rows={2}
+                    maxLength={300}
                     className="w-full pl-9 pr-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 bg-white resize-none"
                   />
                 </div>
@@ -112,6 +115,7 @@ export default function NewProject({ user, onCreated, onCancel }) {
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   placeholder="Brief notes about the project scope"
                   rows={3}
+                  maxLength={500}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 bg-white resize-none"
                 />
               </div>

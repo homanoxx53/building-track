@@ -22,7 +22,8 @@ export default function JoinProject({ code: initialCode, onJoined, onCancel }) {
     setError(null)
     const result = await joinByCode(codeToUse.trim().toUpperCase())
     if (result.error) {
-      setError(typeof result.error === 'string' ? result.error : result.error.message || 'Invalid code')
+      // joinByCode already returns a sanitised string via safeErrorMessage
+      setError(typeof result.error === 'string' ? result.error : 'Invalid or expired invite code')
       setLoading(false)
       return
     }

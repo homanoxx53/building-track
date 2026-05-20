@@ -2,7 +2,7 @@
 // Building Track -- Auth (Sign In / Sign Up)
 // ============================================================
 import { useState } from 'react'
-import { signIn, signUp } from '../lib/supabase.js'
+import { signIn, signUp, safeErrorMessage } from '../lib/supabase.js'
 import { HardHat, Eye, EyeOff } from 'lucide-react'
 
 export default function Auth({ onAuth, inviteCode = null }) {
@@ -21,13 +21,13 @@ export default function Auth({ onAuth, inviteCode = null }) {
     setError(null)
 
     if (mode === 'signup') {
-      const { data, error: err } = await signUp(email, password, name)
-      if (err) { setError(err.message); setLoading(false); return }
+      const { data, error: err } = await signUp(email.trim().slice(0, 254), password, name.trim().slice(0, 100))
+      if (err) { setError(safeErrorMessage(err, 'Sign up failed. Please try again.')); setLoading(false); return }
       if (data?.user && !data.session) { setDone(true); setLoading(false); return }
       onAuth(data.user)
     } else {
-      const { data, error: err } = await signIn(email, password)
-      if (err) { setError(err.message); setLoading(false); return }
+      const { data, error: err } = await signIn(email.trim().slice(0, 254), password)
+      if (err) { setError(safeErrorMessage(err, 'Sign in failed. Please check your credentials.')); setLoading(false); return }
       onAuth(data.user)
     }
     setLoading(false)
@@ -87,6 +87,7 @@ export default function Auth({ onAuth, inviteCode = null }) {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 required
+                maxLength={100}
                 placeholder="e.g. Kwame Asante"
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
               />
@@ -99,6 +100,7 @@ export default function Auth({ onAuth, inviteCode = null }) {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
+              maxLength={254}
               placeholder="you@example.com"
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
             />
@@ -111,8 +113,9 @@ export default function Auth({ onAuth, inviteCode = null }) {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                minLength={6}
-                placeholder="Min. 6 characters"
+                minLength={8}
+                maxLength={128}
+                placeholder="Min. 8 characters"
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 pr-10 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
               />
               <button type="button" onClick={() => setShowPw(p => !p)}

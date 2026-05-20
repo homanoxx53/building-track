@@ -9,6 +9,36 @@ const supabaseKey  = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const isConfigured = !!(supabaseUrl && supabaseKey &&
   supabaseUrl !== 'https://your-project-id.supabase.co')
 
+// ── Input helpers ─────────────────────────────────────────────
+
+/** Trim a string and cap it at maxLen characters. Returns '' for non-strings. */
+function cap(value, maxLen) {
+  return String(value ?? '').trim().slice(0, maxLen)
+}
+
+/** Clamp a number to [min, max]. Returns null for non-finite values. */
+function clampNum(value, min = 0, max = 999999) {
+  const n = parseFloat(value)
+  if (!isFinite(n)) return null
+  return Math.min(Math.max(n, min), max)
+}
+
+/**
+ * Return a safe error string for display in the UI.
+ * Keeps known user-friendly messages; replaces internal/technical
+ * errors with a generic fallback so stack traces don't leak.
+ */
+export function safeErrorMessage(err, fallback = 'Something went wrong. Please try again.') {
+  if (!err) return fallback
+  const msg = typeof err === 'string' ? err : (err.message || '')
+  if (!msg) return fallback
+  // Short, obviously user-facing messages are safe to pass through
+  if (msg.length < 120 && !/stack|column|relation|syntax|permission|uuid|pg_|ERROR/i.test(msg)) {
+    return msg
+  }
+  return fallback
+}
+
 export const supabase = isConfigured ? createClient(supabaseUrl, supabaseKey) : null
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -50,10 +80,17 @@ export async function createProject({ title, address, description, stages = [] }
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { data: null, error: { message: 'Not logged in' } }
 
+  // Sanitize inputs before sending to DB
+  const safeTitle       = cap(title,       100)
+  const safeAddress     = cap(address,     300)
+  const safeDescription = cap(description, 500)
+
+  if (!safeTitle) return { data: null, error: { message: 'Project name is required' } }
+
   // 1. Insert the project
   const { data: project, error: projErr } = await supabase
     .from('projects')
-    .insert({ title, address, description, owner_id: user.id })
+    .insert({ title: safeTitle, address: safeAddress, description: safeDescription, owner_id: user.id })
     .select()
     .single()
 
@@ -183,13 +220,22 @@ export async function approveStage(stageId) {
 export async function addProgressUpdate({ project_id, stage_id, caption, photo_urls }) {
   if (!supabase) return { data: null, error: { message: 'Not configured' } }
   const { data: { user } } = await supabase.auth.getUser()
+
+  // Sanitize caption; validate photo_urls is an array of strings from a trusted origin
+  const safeCaption = cap(caption, 500) || null
+  const safeUrls = Array.isArray(photo_urls)
+    ? photo_urls
+        .filter(u => typeof u === 'string' && u.startsWith('https://'))
+        .slice(0, 10)   // hard cap — no more than 10 photos per update
+    : []
+
   return supabase
     .from('progress_updates')
     .insert({
       project_id,
       stage_id:   stage_id || null,
-      caption:    caption  || null,
-      photo_urls: photo_urls || [],
+      caption:    safeCaption,
+      photo_urls: safeUrls,
       user_id:    user.id,
     })
     .select()
@@ -231,15 +277,25 @@ export async function getMaterialLogs(projectId) {
 export async function addMaterialLog({ project_id, item_name, unit, boq_quantity, actual_quantity, notes }) {
   if (!supabase) return { data: null, error: { message: 'Not configured' } }
   const { data: { user } } = await supabase.auth.getUser()
+
+  // Sanitize text fields and clamp numeric values
+  const safeItem   = cap(item_name, 100)
+  const safeNotes  = cap(notes, 500) || null
+  const safeUnit   = cap(unit, 20) || 'bags'
+  const safeActual = clampNum(actual_quantity, 0, 999999) ?? 0
+  const safeBoq    = boq_quantity != null ? clampNum(boq_quantity, 0, 999999) : null
+
+  if (!safeItem) return { data: null, error: { message: 'Item name is required' } }
+
   return supabase
     .from('material_logs')
     .insert({
       project_id,
-      item_name,
-      unit:            unit            || 'bags',
-      boq_quantity:    boq_quantity    ?? null,
-      actual_quantity: actual_quantity ?? 0,
-      notes:           notes           || null,
+      item_name:       safeItem,
+      unit:            safeUnit,
+      boq_quantity:    safeBoq,
+      actual_quantity: safeActual,
+      notes:           safeNotes,
       logged_by:       user.id,
     })
     .select()
@@ -292,8 +348,14 @@ export async function generateInviteCode(projectId, role = 'contractor') {
  */
 export async function joinByCode(code) {
   if (!supabase) return { error: 'Not configured' }
+  const safeCode = cap(code, 20).toUpperCase()
+  if (!safeCode) return { error: 'Please enter an invite code' }
   const { data, error } = await supabase
-    .rpc('join_project_by_code', { p_code: code })
-  if (error) return { error: error.message || 'Invalid or expired invite code' }
+    .rpc('join_project_by_code', { p_code: safeCode })
+  if (error) {
+    // The RPC raises "Invalid or expired invite code" and "Project not found" —
+    // both are safe to display. Anything else gets a generic fallback.
+    return { error: safeErrorMessage(error, 'Invalid or expired invite code') }
+  }
   return { data: Array.isArray(data) ? data[0] : data, error: null }
 }

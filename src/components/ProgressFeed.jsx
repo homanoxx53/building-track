@@ -5,6 +5,26 @@ import { useState, useEffect } from 'react'
 import { Camera, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
 import { getProgressFeed } from '../lib/supabase.js'
 
+const SUPABASE_HOST = (() => {
+  try { return new URL(import.meta.env.VITE_SUPABASE_URL || '').hostname } catch { return '' }
+})()
+
+/**
+ * Only render images that come from our own Supabase storage bucket.
+ * Blob URLs (created locally during upload preview) are also allowed.
+ * Everything else is rejected to prevent rendering attacker-controlled content.
+ */
+function isTrustedImageUrl(url) {
+  if (typeof url !== 'string') return false
+  if (url.startsWith('blob:')) return true
+  try {
+    const { protocol, hostname } = new URL(url)
+    return protocol === 'https:' && SUPABASE_HOST !== '' && hostname === SUPABASE_HOST
+  } catch {
+    return false
+  }
+}
+
 function timeAgo(iso) {
   const diff = Date.now() - new Date(iso).getTime()
   const mins  = Math.floor(diff / 60000)
@@ -19,7 +39,8 @@ function timeAgo(iso) {
 
 function FeedItem({ item }) {
   const [imgOpen, setImgOpen] = useState(null)
-  const photos = item.photo_urls || []
+  // Only display URLs that come from our own Supabase storage
+  const photos = (item.photo_urls || []).filter(isTrustedImageUrl)
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
