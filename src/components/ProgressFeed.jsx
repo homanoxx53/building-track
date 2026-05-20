@@ -122,3 +122,6 @@ export default function ProgressFeed({ project, role, user }) {
       {feed.map(item => (
         <FeedItem key={item.id} item={item} />
       ))}
+    </div>
+  )
+}

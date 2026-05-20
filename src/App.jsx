@@ -53,4 +53,18 @@ export default function App() {
     return <Auth inviteCode={inviteCode} onAuth={setUser} />
   }
 
-  // Logged in + invite code
+  // Logged in + invite code → process the join, then go to dashboard
+  if (inviteCode && user) {
+    return (
+      <JoinProject
+        code={inviteCode}
+        onJoined={clearInvite}   // clears code → falls through to Dashboard
+        onCancel={clearInvite}
+      />
+    )
+  }
+
+  if (!user) return <Auth onAuth={setUser} />
+
+  return <Dashboard user={user} onLogout={() => setUser(null)} />
+}
