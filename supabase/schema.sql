@@ -6,6 +6,28 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================================
+-- MIGRATION: rename projects.user_id → owner_id if needed
+-- Safe no-op if the column is already called owner_id.
+-- ============================================================
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'projects'
+      AND column_name  = 'user_id'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'projects'
+      AND column_name  = 'owner_id'
+  ) THEN
+    ALTER TABLE public.projects RENAME COLUMN user_id TO owner_id;
+  END IF;
+END;
+$$;
+
+-- ============================================================
 -- 0. USER PROFILES
 -- Mirrors auth.users so PostgREST can join profile data from
 -- any table with a user_id column.
