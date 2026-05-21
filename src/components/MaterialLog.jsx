@@ -2,7 +2,7 @@
 // Building Track -- Material Log (BOQ vs Actual)
 // ============================================================
 import { useState, useEffect } from 'react'
-import { Package, Plus, X, Loader, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Package, Plus, X, Loader, TrendingUp, TrendingDown } from 'lucide-react'
 import { getMaterialLogs, addMaterialLog, safeErrorMessage } from '../lib/supabase.js'
 
 const UNITS = ['bags', 'tonnes', 'kg', 'm³', 'm²', 'metres', 'litres', 'pieces', 'sheets', 'rolls', 'other']

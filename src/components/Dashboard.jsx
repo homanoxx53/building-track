@@ -151,8 +151,8 @@ export default function Dashboard({ user, onLogout }) {
           </div>
         ) : projects.length > 0 ? (
           <div className="space-y-3 mb-6">
-            {projects.map(({ role, projects: p }) => (
-              <ProjectCard
+            {projects.map(({ role, project: p }) => (
+              p && <ProjectCard
                 key={p.id}
                 project={p}
                 role={role}
@@ -216,7 +216,7 @@ function JoinCodeEntry({ onJoined }) {
       <div className="flex gap-2">
         <input
           value={code}
-          onChange={e => setCode(e.target.value.toUpperCase())}
+          onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
           placeholder="e.g. TRACK-4X7K"
           className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm font-mono outline-none focus:border-blue-400"
           maxLength={12}

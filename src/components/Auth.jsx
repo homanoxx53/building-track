@@ -28,6 +28,7 @@ export default function Auth({ onAuth, inviteCode = null }) {
     } else {
       const { data, error: err } = await signIn(email.trim().slice(0, 254), password)
       if (err) { setError(safeErrorMessage(err, 'Sign in failed. Please check your credentials.')); setLoading(false); return }
+      if (!data?.user) { setError('Sign in failed. Please try again.'); setLoading(false); return }
       onAuth(data.user)
     }
     setLoading(false)
