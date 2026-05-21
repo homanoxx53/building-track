@@ -1,8 +1,34 @@
 -- ============================================================
 -- Building Track — Database-Level Security Constraints
 -- Run this in Supabase SQL Editor AFTER schema.sql
--- Safe to re-run: each constraint is dropped before being added.
+-- Safe to re-run: constraints are dropped before being re-added.
+-- Also back-fills any columns that may be missing from older
+-- schema versions (ADD COLUMN IF NOT EXISTS is valid Postgres).
 -- ============================================================
+
+-- ── Ensure columns exist before constraining them ────────────
+-- CREATE TABLE IF NOT EXISTS skips on existing tables, so older
+-- deployments may be missing nullable columns added later.
+ALTER TABLE public.projects
+  ADD COLUMN IF NOT EXISTS address     TEXT,
+  ADD COLUMN IF NOT EXISTS description TEXT;
+
+ALTER TABLE public.stages
+  ADD COLUMN IF NOT EXISTS notes TEXT;
+
+ALTER TABLE public.material_logs
+  ADD COLUMN IF NOT EXISTS notes TEXT;
+
+ALTER TABLE public.progress_updates
+  ADD COLUMN IF NOT EXISTS caption TEXT;
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS full_name TEXT,
+  ADD COLUMN IF NOT EXISTS email     TEXT;
+
+ALTER TABLE public.invite_codes
+  ADD COLUMN IF NOT EXISTS max_uses   INTEGER DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ DEFAULT NULL;
 
 -- ── Projects ─────────────────────────────────────────────────
 ALTER TABLE public.projects
