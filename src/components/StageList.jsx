@@ -22,8 +22,8 @@ function StageCard({ stage, role, projectId, onRefresh }) {
   const cfg  = STATUS[stage.status] || STATUS.pending
   const Icon = cfg.Icon
 
-  const canStart   = role !== 'owner' && stage.status === 'pending'
-  const canSubmit  = role !== 'owner' && stage.status === 'in_progress'
+  const canStart   = stage.status === 'pending'
+  const canSubmit  = stage.status === 'in_progress'
   const canApprove = role === 'owner' && stage.status === 'submitted'
 
   const handleStart = async () => {
@@ -70,8 +70,8 @@ function StageCard({ stage, role, projectId, onRefresh }) {
 
           {/* Actions */}
           <div className="flex gap-2 flex-wrap">
-            {/* Photo upload button (contractor / manager only) */}
-            {role !== 'owner' && (stage.status === 'in_progress' || stage.status === 'submitted') && (
+            {/* Photo upload button — all roles when stage is active */}
+            {(stage.status === 'in_progress' || stage.status === 'submitted') && (
               <button
                 onClick={() => setShowUpload(true)}
                 className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-600 text-xs font-medium rounded-xl hover:bg-gray-200 transition-colors"
