@@ -87,23 +87,33 @@ export async function createProject({ title, address, description, stages = [] }
 
   if (!safeTitle) return { data: null, error: { message: 'Project name is required' } }
 
-  // 1. Insert the project
-  const { data: project, error: projErr } = await supabase
+  // 1. Pre-generate the project ID so we can add the member row before SELECT-ing
+  //    (the SELECT policy checks is_project_member — user must be a member first)
+  const projectId = crypto.randomUUID()
+
+  const { error: projErr } = await supabase
     .from('projects')
-    .insert({ title: safeTitle, address: safeAddress, description: safeDescription, owner_id: user.id })
-    .select()
-    .single()
+    .insert({ id: projectId, title: safeTitle, address: safeAddress, description: safeDescription, owner_id: user.id })
 
-  if (projErr || !project) return { data: null, error: projErr }
+  if (projErr) return { data: null, error: projErr }
 
-  // 2. Add creator as owner in project_members
+  // 2. Add creator as owner in project_members (makes SELECT policy pass)
   const { error: memberErr } = await supabase
     .from('project_members')
-    .insert({ project_id: project.id, user_id: user.id, role: 'owner' })
+    .insert({ project_id: projectId, user_id: user.id, role: 'owner' })
 
   if (memberErr) return { data: null, error: memberErr }
 
-  // 3. Insert stages if provided
+  // 3. Now fetch the project — user is a member so RLS allows it
+  const { data: project, error: fetchErr } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .single()
+
+  if (fetchErr || !project) return { data: null, error: fetchErr }
+
+  // 4. Insert stages if provided
   if (stages.length > 0) {
     const stageRows = stages.map((s, i) => ({
       project_id:  project.id,
