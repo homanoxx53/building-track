@@ -35,7 +35,7 @@ function StageCard({ stage, role, projectId, onRefresh }) {
 
   const handleSubmit = async () => {
     setLoading(true)
-    await updateStageStatus(stage.id, 'submitted')
+    await updateStageStatus(stage.id, 'submitted', { projectId, stageName: stage.name })
     setLoading(false)
     onRefresh()
   }
@@ -70,13 +70,13 @@ function StageCard({ stage, role, projectId, onRefresh }) {
 
           {/* Actions */}
           <div className="flex gap-2 flex-wrap">
-            {/* Photo upload button — all roles when stage is active */}
+            {/* Post update — note + optional photos */}
             {(stage.status === 'in_progress' || stage.status === 'submitted') && (
               <button
                 onClick={() => setShowUpload(true)}
                 className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-600 text-xs font-medium rounded-xl hover:bg-gray-200 transition-colors"
               >
-                <Camera size={13} /> Add Photo
+                <Camera size={13} /> Post Update
               </button>
             )}
 

@@ -3,13 +3,20 @@
 // ============================================================
 import { useState } from 'react'
 import { signIn, signUp, safeErrorMessage } from '../lib/supabase.js'
-import { HardHat, Eye, EyeOff } from 'lucide-react'
+import { HardHat, Eye, EyeOff, Home, HardHat as HardHatIcon, Wrench } from 'lucide-react'
+
+const ROLES = [
+  { value: 'owner',      label: 'Property Owner',  desc: 'Client / investor',       Icon: Home },
+  { value: 'manager',    label: 'Site Manager',     desc: 'Foreman / supervisor',    Icon: HardHatIcon },
+  { value: 'contractor', label: 'Contractor',       desc: 'Builder / tradesperson',  Icon: Wrench },
+]
 
 export default function Auth({ onAuth, inviteCode = null }) {
   const [mode,     setMode]     = useState('signin')
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [name,     setName]     = useState('')
+  const [role,     setRole]     = useState('contractor')
   const [showPw,   setShowPw]   = useState(false)
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState(null)
@@ -21,7 +28,12 @@ export default function Auth({ onAuth, inviteCode = null }) {
     setError(null)
 
     if (mode === 'signup') {
-      const { data, error: err } = await signUp(email.trim().slice(0, 254), password, name.trim().slice(0, 100))
+      const { data, error: err } = await signUp(
+        email.trim().slice(0, 254),
+        password,
+        name.trim().slice(0, 100),
+        role,
+      )
       if (err) { setError(safeErrorMessage(err, 'Sign up failed. Please try again.')); setLoading(false); return }
       if (data?.user && !data.session) { setDone(true); setLoading(false); return }
       onAuth(data.user)
@@ -49,7 +61,7 @@ export default function Auth({ onAuth, inviteCode = null }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 w-full max-w-sm overflow-hidden">
 
         {/* Header */}
@@ -81,19 +93,49 @@ export default function Auth({ onAuth, inviteCode = null }) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {mode === 'signup' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                required
-                maxLength={100}
-                placeholder="e.g. Kwame Asante"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
-              />
-            </div>
+            <>
+              {/* Full name */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  required
+                  maxLength={100}
+                  placeholder="e.g. Kwame Asante"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                />
+              </div>
+
+              {/* Role selector */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">I am a…</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {ROLES.map(({ value, label, desc, Icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setRole(value)}
+                      className={`flex flex-col items-center gap-1.5 p-3 border-2 rounded-xl text-center transition-all ${
+                        role === value
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-100 hover:border-gray-200'
+                      }`}
+                    >
+                      <Icon size={18} className={role === value ? 'text-blue-600' : 'text-gray-400'} />
+                      <span className={`text-xs font-semibold leading-tight ${role === value ? 'text-blue-700' : 'text-gray-700'}`}>
+                        {label}
+                      </span>
+                      <span className="text-xs text-gray-400 leading-tight">{desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
+
+          {/* Email */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
             <input
@@ -106,6 +148,8 @@ export default function Auth({ onAuth, inviteCode = null }) {
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
             />
           </div>
+
+          {/* Password */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
             <div className="relative">
@@ -133,7 +177,7 @@ export default function Auth({ onAuth, inviteCode = null }) {
             disabled={loading}
             className="w-full bg-blue-700 text-white font-semibold py-3 rounded-xl hover:bg-blue-800 transition-colors disabled:opacity-60 text-sm"
           >
-            {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
+            {loading ? 'Please wait…' : mode === 'signin' ? 'Sign In' : 'Create Account'}
           </button>
         </form>
       </div>

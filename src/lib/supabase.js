@@ -42,11 +42,14 @@ export function safeErrorMessage(err, fallback = 'Something went wrong. Please t
 export const supabase = isConfigured ? createClient(supabaseUrl, supabaseKey) : null
 
 // ── Auth ──────────────────────────────────────────────────────
-export async function signUp(email, password, fullName) {
+export async function signUp(email, password, fullName, role = 'contractor') {
   if (!supabase) return { error: { message: 'Not configured' } }
   return supabase.auth.signUp({
     email, password,
-    options: { data: { full_name: fullName } },
+    options: {
+      data: { full_name: fullName, default_role: role },
+      emailRedirectTo: window.location.origin,
+    },
   })
 }
 
@@ -192,14 +195,33 @@ export async function getProjectDetail(projectId) {
 // ── Stages ────────────────────────────────────────────────────
 
 /**
- * FIX BUG 12: removed non-existent 'completed_at' column.
+ * Update stage status.
+ * Pass opts.projectId + opts.stageName to trigger an owner notification
+ * when the stage is submitted for review.
  */
-export async function updateStageStatus(stageId, status) {
+export async function updateStageStatus(stageId, status, opts = {}) {
   if (!supabase) return
-  return supabase
+  const result = await supabase
     .from('stages')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', stageId)
+
+  // Fire-and-forget notification when submitted for review
+  if (!result.error && status === 'submitted' && opts.projectId) {
+    notifyOwner('stage_submitted', opts.projectId, { stage_name: opts.stageName || 'a stage' })
+  }
+  return result
+}
+
+/**
+ * Fire-and-forget: call the notify-owner Edge Function.
+ * Errors are logged but never surfaced to the user.
+ */
+function notifyOwner(type, projectId, extra = {}) {
+  if (!supabase) return
+  supabase.functions
+    .invoke('notify-owner', { body: { type, project_id: projectId, ...extra } })
+    .catch(err => console.warn('notify-owner failed (non-critical):', err?.message))
 }
 
 /**
@@ -239,7 +261,7 @@ export async function addProgressUpdate({ project_id, stage_id, caption, photo_u
         .slice(0, 10)   // hard cap — no more than 10 photos per update
     : []
 
-  return supabase
+  const result = await supabase
     .from('progress_updates')
     .insert({
       project_id,
@@ -250,6 +272,15 @@ export async function addProgressUpdate({ project_id, stage_id, caption, photo_u
     })
     .select()
     .single()
+
+  // Notify owner about new site update (fire-and-forget)
+  if (!result.error) {
+    notifyOwner('progress_update', project_id, {
+      photo_count: safeUrls.length,
+      has_caption: !!safeCaption,
+    })
+  }
+  return result
 }
 
 /**
